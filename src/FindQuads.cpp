@@ -52,7 +52,7 @@ chilitags::FindQuads::FindQuads() :
 #endif
 }
 
-std::vector<chilitags::Quad> chilitags::FindQuads::operator()(const cv::Mat &greyscaleImage)
+std::vector<chilitags::Quad> chilitags::FindQuads::operator()(const cv::Mat &greyscaleImage, bool isEdgeImage)
 {
     //TODO function too long, split it
 
@@ -65,27 +65,35 @@ std::vector<chilitags::Quad> chilitags::FindQuads::operator()(const cv::Mat &gre
 #endif
 
     int nPyramidLevel = 0;
-    //TODO make 320 a parameter. This could be part of a set of parameters
-    // controlled by a tradeoff between speed and detection specified by the
-    // users
-    // Not that it would be a micro optimisation to be honnest... what takes
-    // times is the bigger images in the pyramid obviously
-    while ((greyscaleImage.cols >> nPyramidLevel) > 320) {
+
+    if (not isEdgeImage) {
+        //TODO make 320 a parameter. This could be part of a set of parameters
+        // controlled by a tradeoff between speed and detection specified by the
+        // users
+        // Not that it would be a micro optimisation to be honnest... what takes
+        // times is the bigger images in the pyramid obviously
+        while ((greyscaleImage.cols >> nPyramidLevel) > 320) {
+            ++nPyramidLevel;
+        }
         ++nPyramidLevel;
-    }
-    ++nPyramidLevel;
 
-    while (mGrayPyramid.size() < nPyramidLevel) mGrayPyramid.push_back(cv::Mat());
-    mGrayPyramid[0] = greyscaleImage;
-    for (int i = 1; i < nPyramidLevel; ++i) {
-        cv::pyrDown(mGrayPyramid[i-1], mGrayPyramid[i]);
-    }
+        while (mGrayPyramid.size() < nPyramidLevel) mGrayPyramid.push_back(cv::Mat());
+        mGrayPyramid[0] = greyscaleImage;
+        for (int i = 1; i < nPyramidLevel; ++i) {
+            cv::pyrDown(mGrayPyramid[i-1], mGrayPyramid[i]);
+        }
 
-    while (mBinaryPyramid.size() < nPyramidLevel) mBinaryPyramid.push_back(cv::Mat());
-    for (int i = 0; i < nPyramidLevel; ++i) {
-        cv::Canny(mGrayPyramid[i], mBinaryPyramid[i], 100, 200, 3);
-        // Better, but 2x slower:
-        //cv::Canny(mGrayPyramid[i], mBinaryPyramid[i], 1000, 500, 5);
+        while (mBinaryPyramid.size() < nPyramidLevel) mBinaryPyramid.push_back(cv::Mat());
+        for (int i = 0; i < nPyramidLevel; ++i) {
+            cv::Canny(mGrayPyramid[i], mBinaryPyramid[i], 100, 200, 3);
+            // Better, but 2x slower:
+            //cv::Canny(mGrayPyramid[i], mBinaryPyramid[i], 1000, 500, 5);
+        }
+    }
+    else
+    {
+        nPyramidLevel = 1;
+        mBinaryPyramid.push_back(greyscaleImage);
     }
 
     for (int i = nPyramidLevel-1; i>=0; --i) //starting with the lowest definition, so the highest definition are last, and can simply override the first ones.

@@ -202,6 +202,11 @@ std::map<std::string, cv::Matx44d> estimate(
     return estimate(mChilitags.find(inputImage));
 }
 
+std::map<std::string, cv::Matx44d> estimateFromEdges(const cv::Mat &inputImage,
+                                                     const cv::Mat &edgesImage) {
+    return estimate(mChilitags.findFromEdges(inputImage, edgesImage));
+}
+
 void setDefaultTagSize(float defaultSize){
     mDefaultTagCorners = {
         cv::Point3f(0., 0., 0.),
@@ -336,6 +341,12 @@ std::map<std::string, cv::Matx44d> chilitags::Chilitags3D::estimate(
 std::map<std::string, cv::Matx44d> chilitags::Chilitags3D::estimate(
     const cv::Mat &inputImage) {
     return mImpl->estimate(inputImage);
+}
+
+std::map<std::string, cv::Matx44d> chilitags::Chilitags3D::estimateFromEdges(
+    const cv::Mat &inputImage,
+    const cv::Mat &edges) {
+    return mImpl->estimateFromEdges(inputImage, edges);
 }
 
 void chilitags::Chilitags3D::setDefaultTagSize(float defaultSize){

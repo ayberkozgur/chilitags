@@ -87,6 +87,15 @@ void setFilter(int persistence, double gain);
 std::map<int, Quad> find(const cv::Mat &inputImage);
 
 /**
+  Like find, but takes a binarized image containing all the edges in the
+  image. Useful if an edge detection pass has been already performed, or
+  to implement edge detection in optimized ways (like OpenGL/OpenCL)
+*/
+std::map<int, Quad> findFromEdges(const cv::Mat &inputImage,
+                                  const cv::Mat &edgesImage);
+
+
+/**
     Finds the black and white, 6x6 matrix corresponding to the given id.
 
     \param id the id of the tag to encode, between  0 (included) and 1024
@@ -243,6 +252,14 @@ std::map<std::string, cv::Matx44d> estimate(const std::map<int, Quad> & tags);
     \param inputImage the image to feed to Chilitags::find().
  */
 std::map<std::string, cv::Matx44d> estimate(const cv::Mat &inputImage);
+
+/**
+  Like estimate, but takes a binarized image containing all the edges in the
+  image. Useful if an edge detection pass has been already performed, or
+  to implement edge detection in optimized ways (like OpenGL/OpenCL)
+*/
+std::map<std::string, cv::Matx44d> estimateFromEdges(const cv::Mat &inputImage,
+                                                     const cv::Mat &edgesImage);
 
 /**
     Chilitags3D can also detect rigid assemblies of tags. This allows for a

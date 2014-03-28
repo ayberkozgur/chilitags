@@ -72,6 +72,25 @@ std::map<int, Quad> find(const cv::Mat &inputImage){
     return mFilter(tags);
 };
 
+std::map<int, Quad> findFromEdges(const cv::Mat &inputImage,
+                                  const cv::Mat &edgesImage){
+
+    auto greyscaleImage = mEnsureGreyscale(inputImage);
+    std::map<int, Quad> tags;
+
+    for (const auto & quad : mFindQuads(edgesImage, true)) {
+        auto refinedQuad = mRefine(greyscaleImage, quad);
+        auto tag = mDecode(mReadBits(greyscaleImage, refinedQuad), refinedQuad);
+        if (tag.first != Decode::INVALID_TAG) tags[tag.first] = tag.second;
+        else {
+            tag = mDecode(mReadBits(greyscaleImage, quad), quad);
+            if (tag.first != Decode::INVALID_TAG) tags[tag.first] = tag.second;
+        }
+    }
+    return mFilter(tags);
+};
+
+
 cv::Matx<unsigned char, 6, 6> encode(int id) const {
     cv::Matx<unsigned char, 6, 6> encodedId;
     mDecode.getCodec().getTagEncodedId(id, encodedId.val);
@@ -144,6 +163,13 @@ std::map<int, Quad> Chilitags::find(
     const cv::Mat &inputImage) {
     return mImpl->find(inputImage);
 }
+
+std::map<int, Quad> Chilitags::findFromEdges(
+    const cv::Mat &inputImage,
+    const cv::Mat &edges) {
+    return mImpl->findFromEdges(inputImage, edges);
+}
+
 
 cv::Matx<unsigned char, 6, 6> Chilitags::encode(int id) const {
     return mImpl->encode(id);

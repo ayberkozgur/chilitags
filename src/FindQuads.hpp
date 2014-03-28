@@ -32,7 +32,8 @@ class FindQuads
 public:
 FindQuads();
 
-std::vector<Quad> operator()(const cv::Mat &greyscaleImage);
+std::vector<Quad> operator()(const cv::Mat &greyscaleImage,
+                             bool isEdgeImage = false);
 
 protected:
 
