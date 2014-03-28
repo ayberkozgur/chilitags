@@ -88,6 +88,11 @@ std::vector<chilitags::Quad> chilitags::FindQuads::operator()(const cv::Mat &gre
             cv::Canny(mGrayPyramid[i], mBinaryPyramid[i], 100, 200, 3);
             // Better, but 2x slower:
             //cv::Canny(mGrayPyramid[i], mBinaryPyramid[i], 1000, 500, 5);
+#ifdef DEBUG_FindQuads
+            cv::imshow("FindQuads", mBinaryPyramid[i]);
+            cv::waitKey(0);
+#endif
+
         }
     }
     else
