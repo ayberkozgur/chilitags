@@ -35,6 +35,7 @@ static int Chilitags3D_processingWidth = -1;
 static int Chilitags3D_inputType = -1;
 static cv::Mat Chilitags3D_grayscale;
 static cv::Mat Chilitags3D_downsampled;
+static cv::Mat Chilitags3D_downsampled_edges;
 
 JNI(jlong,alloc)(JNIEnv* env, jclass* class_, jint width, jint height, jint processingWidth, jint processingHeight, jint inputType){
 	Chilitags3D_height = height;
@@ -48,6 +49,7 @@ JNI(jlong,alloc)(JNIEnv* env, jclass* class_, jint width, jint height, jint proc
 	case 2: //RGB888
 		Chilitags3D_grayscale = cv::Mat(Chilitags3D_height,Chilitags3D_width,CV_8UC1);
 		Chilitags3D_downsampled = cv::Mat(Chilitags3D_processingHeight,Chilitags3D_processingWidth,CV_8UC1);
+		Chilitags3D_downsampled_edges = cv::Mat(Chilitags3D_processingHeight,Chilitags3D_processingWidth,CV_8UC1);
 		break;
 
 	default:
@@ -167,6 +169,95 @@ JNI(jobjectArray,estimateImpl)(JNIEnv* env, jclass* class_, jlong ptr, jbyteArra
 
 	//Unpin the image data buffer inside the JVM
 	env->ReleaseByteArrayElements(imageData,buffer,0);
+
+	/*
+	 * Allocate the jobjectArray that we will return
+	 */
+
+	//Get class
+	jclass cls = env->FindClass("ch/epfl/chili/chilitags/ObjectTransform");
+
+	//Get constructor
+	jmethodID constructor = env->GetMethodID(cls,"<init>","()V");
+
+	//Get fields
+	jfieldID nameID = env->GetFieldID(cls,"name","Ljava/lang/String;");
+	jfieldID transformID = env->GetFieldID(cls,"transform","[[D");
+
+	//Allocate object array
+	jobjectArray jresult = env->NewObjectArray((unsigned int)result.size(),cls,NULL);
+
+	//Get each object transform and put it inside our jobjectArray
+	int i=0;
+	jdouble row[4];
+	for(auto pair : result){
+
+		//Build single object
+		jobject jpair = env->NewObject(cls, constructor);
+
+		//Set object name
+		env->SetObjectField(jpair, nameID, env->NewStringUTF(pair.first.c_str()));
+
+		/*
+		 * Build object transform matrix
+		 */
+
+		//Get rows of the matrix in JVM heap space, we will change them
+		jobjectArray rows = reinterpret_cast<jobjectArray>(env->GetObjectField(jpair,transformID));
+		jdoubleArray jrow;
+
+		//Traverse rows
+		for(int j=0;j<4;j++){
+
+			//Traverse columns
+			for(int k=0;k<4;k++){
+
+				//Set current element of the matrix accordingly
+				row[k] = pair.second(j,k);
+			}
+
+			//Temporarily allocate a new row in JVM heap space (no need to unpin an array allocated with New...Array in the end)
+			jrow = env->NewDoubleArray(4);
+
+			//Fill the newly allocated row
+			env->SetDoubleArrayRegion(jrow,0,4,row);
+
+			//Write the newly filled row to the appropriate row of our matrix
+			env->SetObjectArrayElement(rows,j,jrow);
+		}
+
+		//Put it in final result array
+		env->SetObjectArrayElement(jresult,i,jpair);
+		i++;
+	}
+
+	return jresult;
+}
+
+JNI(jobjectArray,estimateFromEdgesImpl)(JNIEnv* env, jclass* class_, jlong ptr, jbyteArray imageData, jbyteArray edgeData){
+
+	//Get a pointer to the image data buffer inside the JVM heap by first pinning it down to prevent garbage collector from touching it
+	//This doesn't cause copying the buffer to another location in the heap unless necessary: We're truly sharing memory most of the time
+	jbyte* buffer = env->GetByteArrayElements(imageData,0);
+	unsigned char* ubuffer = reinterpret_cast<unsigned char*>(buffer);
+	jbyte* buffer_edge = env->GetByteArrayElements(edgeData,0);
+	unsigned char* ubuffer_edges = reinterpret_cast<unsigned char*>(buffer_edge);
+
+	//Downsample and grayscale image
+	cv::Mat original(Chilitags3D_height + Chilitags3D_height/2, Chilitags3D_width, CV_8UC1, ubuffer);
+	cv::cvtColor(original,Chilitags3D_grayscale,cv::COLOR_YUV2GRAY_NV21);
+	cv::resize(Chilitags3D_grayscale,Chilitags3D_downsampled,cv::Size(Chilitags3D_processingWidth,Chilitags3D_processingHeight));
+
+	//Downsaple edges
+	cv::Mat original_edges(Chilitags3D_height, Chilitags3D_width, CV_8UC1, ubuffer_edges);
+	cv::resize(original_edges,Chilitags3D_downsampled_edges,cv::Size(Chilitags3D_processingWidth,Chilitags3D_processingHeight));
+
+	//Call Chilitags' estimate on the grayscale image
+	auto result = GET_OBJ(ptr)->estimateFromEdges(Chilitags3D_downsampled,Chilitags3D_downsampled_edges);
+
+	//Unpin the image data buffer inside the JVM
+	env->ReleaseByteArrayElements(imageData,buffer,0);
+	env->ReleaseByteArrayElements(edgeData,buffer_edge,0);
 
 	/*
 	 * Allocate the jobjectArray that we will return

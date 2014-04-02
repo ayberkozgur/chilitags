@@ -59,8 +59,9 @@ public class Chilitags3D {
 	private native void free(long ptr);
 	private native void readTagConfigurationImpl(long ptr, String filename, boolean omitOtherTags);
 	private native CVSize readCalibrationImpl(long ptr, String filename);
-	private native ObjectTransform[] estimateImpl(long ptr,byte[] imageData);
 	private native void setCalibrationImpl(long ptr, double[] cameraMatrix, double[] distortionCoeffs);
+	private native ObjectTransform[] estimateImpl(long ptr,byte[] imageData);
+	private native ObjectTransform[] estimateFromEdgesImpl(long ptr, byte[] imageData, byte[] edgeData);
 	
 	/**
 	 * Creates a new Chilitags3D object.
@@ -121,5 +122,17 @@ public class Chilitags3D {
 	 */
 	public ObjectTransform[] estimate(byte[] imageData){
 		return estimateImpl(ptr,imageData);
+	}
+	
+	/**
+	 * Estimates the 3D transforms of objects tagged with Chilitags from the Canny image.
+	 * Depends on the tag configuration file, set it first.
+	 * 
+	 * @param imageData The image buffer, must be of size (height)x(width) and of YUV_NV21 encoding; height and width values are set during construction
+	 * @param edgeData The image buffer, must be of size (height)x(width) and 8-bit grayscale; height and width values are set during construction
+	 * @return The list of transforms of the objects found in the image
+	 */
+	public ObjectTransform[] estimateFromEdges(byte[] imageData, byte[] edgeData){
+		return estimateFromEdgesImpl(ptr,imageData,edgeData);
 	}
 }
