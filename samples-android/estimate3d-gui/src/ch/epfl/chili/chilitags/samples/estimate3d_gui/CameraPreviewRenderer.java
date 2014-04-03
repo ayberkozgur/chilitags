@@ -38,12 +38,12 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 
 	//Our line object
 	private GLESLine line;
-	
+
 	//Our vertex shader code; nothing special
 	private final String vertexShaderSource = 
 			"attribute vec4 a_position;							\n" + 
-			"attribute vec2 a_texCoord;							\n" + 
-			"varying vec2 v_texCoord;							\n" + 
+					"attribute vec2 a_texCoord;							\n" + 
+					"varying vec2 v_texCoord;							\n" + 
 
 			"void main(){										\n" + 
 			"   gl_Position = a_position;						\n" + 
@@ -54,8 +54,8 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 	//Effectively making YUV to RGB conversion
 	private final String fragmentShaderSource = 
 			"#ifdef GL_ES										\n" +
-			"precision highp float;								\n" +
-			"#endif												\n" +
+					"precision highp float;								\n" +
+					"#endif												\n" +
 
 			"varying vec2 v_texCoord;							\n" +
 			"varying vec2 v_texCoordChroma;						\n" +
@@ -107,7 +107,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 	private double[][] camMat; //The camera matrix
 	private double xScale; //(Camera image width)/(Chilitags processing image width)
 	private double yScale; //(Camera image height)/(Chilitags processing image height)
-	
+
 	/**
 	 * Creates a new renderer for our GL surface. It will render the camera image on the background and the frames of all detected tags.
 	 * 
@@ -124,7 +124,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		/*
 		 * GLES stuff
 		 */
-		
+
 		//Allocate vertices of our mesh on native memory space
 		vertices = ByteBuffer.allocateDirect(verticesData.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
 		vertices.put(verticesData);
@@ -141,18 +141,18 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 
 		//Allocate our line object
 		line = new GLESLine();
-		
+
 		/*
 		 * Prepare the transforms we will use
 		 */
-		
+
 		//Get the camera matrix
 		camMat = new double[4][4];
 		for(int i=0;i<3;i++)
 			for(int j=0;j<3;j++)
 				camMat[i][j] = camCalib[i*3+j];
 		camMat[3][2] = 1; //This is for getting the Z coordinate on the last element of the vector when multiplied with the camera matrix
-		
+
 		//Get the scaling values
 		this.xScale = xScale;
 		this.yScale = yScale;
@@ -164,7 +164,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		/*
 		 * Prepare our frame buffer and render buffer
 		 */
-		
+
 		frameBuffer = IntBuffer.allocate(1);
 		renderBuffer = IntBuffer.allocate(1);
 		GLES20.glEnable(GLES20.GL_TEXTURE_2D);
@@ -186,7 +186,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		/*
 		 * Prepare the shader stuff
 		 */
-		
+
 		//Compile and load our shader
 		shaderProgramHandle = loadProgram(vertexShaderSource, fragmentShaderSource);
 
@@ -215,7 +215,39 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		GLES20.glActiveTexture(GLES20.GL_ACTIVE_TEXTURE);
 		GLES20.glViewport(0, 0, width, height);
 	}
-	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	byte[] blurred = new byte[1280*720];
+	byte[] buf = new byte[1280*720];
+	int[] grad = new int[1280*720];
+	int[] grad2 = new int[1280*720];
+	byte[] dir = new byte[1280*720];
+
+
+
+
+
+
+
+
+
+
+
+
+
 	@Override
 	public void onDrawFrame(GL10 unused) {
 
@@ -226,15 +258,130 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		byte[] cameraImage = camController.getPictureData();
 		if(cameraImage != null){
 
+
+			System.arraycopy(cameraImage, 0, buf, 0, 1280*720);
+			final int[] gaussian = {
+					2,4,5,4,2,
+					4,9,12,9,4,
+					5,12,15,12,5,
+					4,9,12,9,4,
+					2,4,5,4,2};
+
+			final int[] Gx = {
+					-1, 0, 1,
+					-2, 0, 2,
+					-1, 0, 1
+			};
+
+			final int[] Gy = {
+					-1, -2, -1,
+					0, 0, 0,
+					1, 2, 1
+			};
+
+			int t;
+
+			//Gaussian blur
+			for(int x=0;x<1280;x++)
+				for(int y=0;y<720;y++){
+					t = 0;
+					for(int xf=-2;xf<=2;xf++)
+						for(int yf=-2;yf<=2;yf++)
+							if(x+xf>=0 && x+xf<1280 && y+yf>=0 && y+yf<720)
+								t += gaussian[xf + 2 + (yf + 2)*5]*(0xFF & buf[(y + yf)*1280 + (x + xf)]);
+					t /= 159;
+					blurred[y*1280 + x] = (byte)t;	
+				}
+
+
+			//Gradient
+			int gx,gy;
+			double angle;
+			for(int x=0;x<1280;x++)
+				for(int y=0;y<720;y++){
+					gx = 0;
+					gy = 0;
+					for(int xf=-1;xf<=1;xf++)
+						for(int yf=-1;yf<=1;yf++)
+							if(x+xf>=0 && x+xf<1280 && y+yf>=0 && y+yf<720){
+								gx += Gx[xf + 1 + (yf + 1)*3]*(0xFF & blurred[(y + yf)*1280 + (x + xf)]);
+								gy += Gy[xf + 1 + (yf + 1)*3]*(0xFF & blurred[(y + yf)*1280 + (x + xf)]);
+							}
+
+					grad[y*1280 + x] = (int)Math.hypot(gx, gy);	
+					angle = Math.atan2(gy, gx);
+					if(angle < 0)
+						angle += Math.PI;
+
+					if(angle <= Math.PI/8)
+						dir[y*1280 + x] = 0;
+					else if(Math.PI/8 < angle && angle <= 3*Math.PI/8)
+						dir[y*1280 + x] = 1;
+					else if(3*Math.PI/8 < angle && angle <= 5*Math.PI/8)
+						dir[y*1280 + x] = 2;
+					else if(5*Math.PI/8 < angle && angle <= 7*Math.PI/8)
+						dir[y*1280 + x] = 3;
+					else
+						dir[y*1280 + x] = 0;
+				}
+
+			//Non-maximum suppression
+			for(int x=1;x<1280 - 1;x++)
+				for(int y=1;y<720 - 1;y++){
+					grad2[y*1280 + x] = grad[y*1280 + x];
+					switch(dir[y*1280 + x]){
+					case 0:
+						if(grad[y*1280 + x] < grad[y*1280 + x - 1] || grad[y*1280 + x] < grad[y*1280 + x + 1])
+							grad2[y*1280 + x] = 0;
+						break;
+					case 1:
+						if(grad[y*1280 + x] < grad[(y + 1)*1280 + x + 1] || grad[y*1280 + x] < grad[(y - 1)*1280 + x - 1])
+							grad2[y*1280 + x] = 0;
+						break;
+					case 2:
+						if(grad[y*1280 + x] < grad[(y + 1)*1280 + x] || grad[y*1280 + x] < grad[(y - 1)*1280 + x])
+							grad2[y*1280 + x] = 0;
+						break;
+					case 3:
+						if(grad[y*1280 + x] < grad[(y + 1)*1280 + x - 1] || grad[y*1280 + x] < grad[(y - 1)*1280 + x + 1])
+							grad2[y*1280 + x] = 0;
+						break;
+					}
+				}
+
+			//Hysteresis/thresholding
+			for(int x=1;x<1280 - 1;x++)
+				for(int y=1;y<720 - 1;y++)
+					if(grad2[y*1280 + x] < 100 )
+						blurred[y*1280 + x] = 0;
+					else if(grad2[y*1280 + x] > 200 )
+						blurred[y*1280 + x] = (byte) 0xFF;
+					else{
+						if(
+								grad2[y*1280 + x + 1] > 200 ||
+								grad2[y*1280 + x - 1] > 200 ||
+								grad2[(y + 1)*1280 + x + 1] > 200 ||
+								grad2[(y + 1)*1280 + x - 1] > 200 ||
+								grad2[(y - 1)*1280 + x + 1] > 200 ||
+								grad2[(y - 1)*1280 + x - 1] > 200 ||
+								grad2[(y + 1)*1280 + x] > 200 ||
+								grad2[(y - 1)*1280 + x] > 200)
+							blurred[y*1280 + x] = (byte) 0xFF;
+						else
+							blurred[y*1280 + x] = 0;
+					}
+
+
+			//System.arraycopy(blurred, 0, cameraImage, 0, 1280*720);
+
+
+
 			//Render the background that is the live camera preview
 			renderBackground(cameraImage);
 
 			//Get the 3D tag poses from Chilitags
-			//byte[] c = new byte[cameraImage.length];
-			//System.arraycopy(cameraImage, 0, c, 0, cameraImage.length);
-			//ObjectTransform[] tags = chilitags.estimateFromEdges(cameraImage,c);
-			ObjectTransform[] tags = chilitags.estimate(cameraImage);
-			
+			ObjectTransform[] tags = chilitags.estimateFromEdges(cameraImage,blurred);
+
 			//Render the tags' reference frames on the image
 			renderTagFrames(tags);
 		}
@@ -252,15 +399,15 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		final double[] WORLD_ARROW_X = 		{TAG_SIZE,		0.0,		0.0,		1.0};
 		final double[] WORLD_ARROW_Y = 		{0.0,			TAG_SIZE,	0.0,		1.0};
 		final double[] WORLD_ARROW_Z = 		{0.0,			0.0,		TAG_SIZE,	1.0};
-		
+
 		line.begin();
-		
+
 		for(ObjectTransform tag : tags){
 
 			/*
 			 * Calculate line positions on the screen
 			 */
-			
+
 			//Calculate the (unscaled) tag frame points in the screen frame: v_screen = cameraMatrix * tagTransform * v_world
 			double[] screen_arrow_origin = GLESLine.multiply(camMat, GLESLine.multiply(tag.transform, WORLD_ARROW_ORIGIN));
 			double[] screen_arrow_X = GLESLine.multiply(camMat, GLESLine.multiply(tag.transform, WORLD_ARROW_X));
@@ -286,25 +433,25 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 			Point screenPoints_Z = new Point();
 			screenPoints_Z.x = (int)(xScale * screen_arrow_Z[0] / screen_arrow_Z[3]);
 			screenPoints_Z.y = (int)(yScale * screen_arrow_Z[1] / screen_arrow_Z[3]);
-			
+
 			/*
 			 * Draw the arrows
 			 */
-			
+
 			//Draw the X arrow
 			line.setColor(1.0f, 0.0f, 0.0f, 1.0f);
 			line.setVerts(
 					((float)screenPoints_origin.x/camController.cameraWidth - 0.5f)*2.0f, -((float)screenPoints_origin.y/camController.cameraHeight - 0.5f)*2.0f, 
 					((float)screenPoints_X.x/camController.cameraWidth - 0.5f)*2.0f, -((float)screenPoints_X.y/camController.cameraHeight - 0.5f)*2.0f);
 			line.draw();
-			
+
 			//Draw the Y arrow
 			line.setColor(0.0f, 1.0f, 0.0f, 1.0f);
 			line.setVerts(
 					((float)screenPoints_origin.x/camController.cameraWidth - 0.5f)*2.0f, -((float)screenPoints_origin.y/camController.cameraHeight - 0.5f)*2.0f,
 					((float)screenPoints_Y.x/camController.cameraWidth - 0.5f)*2.0f, -((float)screenPoints_Y.y/camController.cameraHeight - 0.5f)*2.0f);
 			line.draw();
-			
+
 			//Draw the Z arrow
 			line.setColor(0.0f, 0.0f, 1.0f, 1.0f);
 			line.setVerts(
@@ -356,17 +503,17 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		//Set texture slot 0 as active and bind our texture object to it
 		GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
 		GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, yTextureNames[0]);
-		
+
 		//Y texture is (width*height) in size and each pixel is one byte; by setting GL_LUMINANCE, OpenGL puts this byte into R,G and B components of the texture
 		GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE, camController.cameraWidth, camController.cameraHeight, 
 				0, GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, yBuffer);
-		
+
 		//Use linear interpolation when magnifying/minifying the texture to areas larger/smaller than the texture size
 		GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
 		GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
 		GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
 		GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
-		
+
 		//Set the uniform y_texture object in the shader code to the texture at slot 0
 		GLES20.glUniform1i(yTextureHandle, 0);
 
@@ -384,7 +531,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		//Note that we could have also found V at G or B as well. 
 		GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE_ALPHA, camController.cameraWidth/2, camController.cameraHeight/2, 
 				0, GLES20.GL_LUMINANCE_ALPHA, GLES20.GL_UNSIGNED_BYTE, uvBuffer);
-		
+
 		//Use linear interpolation when magnifying/minifying the texture to areas larger/smaller than the texture size
 		GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
 		GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
@@ -397,7 +544,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		/*
 		 * Actual rendering
 		 */
-		
+
 		GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, indices);
 
 		//Unload our vertex array
