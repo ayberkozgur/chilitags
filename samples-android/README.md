@@ -100,4 +100,10 @@ calculations. Based on the following code:
 on the following code: [What is the easiest way to draw line using OpenGL-ES 
 (android)](http://stackoverflow.com/questions/16027455/what-is-the-easiest-way-to-draw-line-using-opengl-es-android/16223456#16223456)
 
+estimate3d-gui-opengl-canny
+---------------------------
 
+This is the same as the above sample but uses a fragment shader to implement
+the Canny filter that normally takes most of the time when running on the CPU
+through OpenCV. The edge detection image is then fed to Chilitags along with
+the actual camera image to detect the tags. 

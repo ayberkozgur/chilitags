@@ -11,4 +11,7 @@ build*/
 /samples-android/estimate3d-gui/bin/
 /samples-android/estimate3d-gui/gen/
 /samples-android/estimate3d-gui/libs/
+/samples-android/estimate3d-gui-opengl-canny/bin/
+/samples-android/estimate3d-gui-opengl-canny/gen/
+/samples-android/estimate3d-gui-opengl-canny/libs/
 *.md.html

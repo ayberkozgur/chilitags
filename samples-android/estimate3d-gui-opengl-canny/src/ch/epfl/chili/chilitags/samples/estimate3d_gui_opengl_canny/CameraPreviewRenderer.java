@@ -1,4 +1,4 @@
-package ch.epfl.chili.chilitags.samples.estimate3d_gui;
+package ch.epfl.chili.chilitags.samples.estimate3d_gui_opengl_canny;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -54,10 +54,11 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 	//Effectively making YUV to RGB conversion
 	private final String fragmentShaderSource = 
 			"#ifdef GL_ES										\n" +
-			"precision highp float;								\n" +
-			"#endif												\n" +
+					"precision highp float;								\n" +
+					"#endif												\n" +
 
 			"varying vec2 v_texCoord;							\n" +
+			"varying vec2 v_texCoordChroma;						\n" +
 			"uniform sampler2D y_texture;						\n" +
 			"uniform sampler2D uv_texture;						\n" +
 
@@ -215,6 +216,38 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		GLES20.glViewport(0, 0, width, height);
 	}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	byte[] blurred = new byte[1280*720];
+	byte[] buf = new byte[1280*720];
+	int[] grad = new int[1280*720];
+	int[] grad2 = new int[1280*720];
+	byte[] dir = new byte[1280*720];
+
+
+
+
+
+
+
+
+
+
+
+
+
 	@Override
 	public void onDrawFrame(GL10 unused) {
 
@@ -225,11 +258,129 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		byte[] cameraImage = camController.getPictureData();
 		if(cameraImage != null){
 
+
+			System.arraycopy(cameraImage, 0, buf, 0, 1280*720);
+			final int[] gaussian = {
+					2,4,5,4,2,
+					4,9,12,9,4,
+					5,12,15,12,5,
+					4,9,12,9,4,
+					2,4,5,4,2};
+
+			final int[] Gx = {
+					-1, 0, 1,
+					-2, 0, 2,
+					-1, 0, 1
+			};
+
+			final int[] Gy = {
+					-1, -2, -1,
+					0, 0, 0,
+					1, 2, 1
+			};
+
+			int t;
+
+			//Gaussian blur
+			for(int x=0;x<1280;x++)
+				for(int y=0;y<720;y++){
+					t = 0;
+					for(int xf=-2;xf<=2;xf++)
+						for(int yf=-2;yf<=2;yf++)
+							if(x+xf>=0 && x+xf<1280 && y+yf>=0 && y+yf<720)
+								t += gaussian[xf + 2 + (yf + 2)*5]*(0xFF & buf[(y + yf)*1280 + (x + xf)]);
+					t /= 159;
+					blurred[y*1280 + x] = (byte)t;	
+				}
+
+
+			//Gradient
+			int gx,gy;
+			double angle;
+			for(int x=0;x<1280;x++)
+				for(int y=0;y<720;y++){
+					gx = 0;
+					gy = 0;
+					for(int xf=-1;xf<=1;xf++)
+						for(int yf=-1;yf<=1;yf++)
+							if(x+xf>=0 && x+xf<1280 && y+yf>=0 && y+yf<720){
+								gx += Gx[xf + 1 + (yf + 1)*3]*(0xFF & blurred[(y + yf)*1280 + (x + xf)]);
+								gy += Gy[xf + 1 + (yf + 1)*3]*(0xFF & blurred[(y + yf)*1280 + (x + xf)]);
+							}
+
+					grad[y*1280 + x] = (int)Math.hypot(gx, gy);	
+					angle = Math.atan2(gy, gx);
+					if(angle < 0)
+						angle += Math.PI;
+
+					if(angle <= Math.PI/8)
+						dir[y*1280 + x] = 0;
+					else if(Math.PI/8 < angle && angle <= 3*Math.PI/8)
+						dir[y*1280 + x] = 1;
+					else if(3*Math.PI/8 < angle && angle <= 5*Math.PI/8)
+						dir[y*1280 + x] = 2;
+					else if(5*Math.PI/8 < angle && angle <= 7*Math.PI/8)
+						dir[y*1280 + x] = 3;
+					else
+						dir[y*1280 + x] = 0;
+				}
+
+			//Non-maximum suppression
+			for(int x=1;x<1280 - 1;x++)
+				for(int y=1;y<720 - 1;y++){
+					grad2[y*1280 + x] = grad[y*1280 + x];
+					switch(dir[y*1280 + x]){
+					case 0:
+						if(grad[y*1280 + x] < grad[y*1280 + x - 1] || grad[y*1280 + x] < grad[y*1280 + x + 1])
+							grad2[y*1280 + x] = 0;
+						break;
+					case 1:
+						if(grad[y*1280 + x] < grad[(y + 1)*1280 + x + 1] || grad[y*1280 + x] < grad[(y - 1)*1280 + x - 1])
+							grad2[y*1280 + x] = 0;
+						break;
+					case 2:
+						if(grad[y*1280 + x] < grad[(y + 1)*1280 + x] || grad[y*1280 + x] < grad[(y - 1)*1280 + x])
+							grad2[y*1280 + x] = 0;
+						break;
+					case 3:
+						if(grad[y*1280 + x] < grad[(y + 1)*1280 + x - 1] || grad[y*1280 + x] < grad[(y - 1)*1280 + x + 1])
+							grad2[y*1280 + x] = 0;
+						break;
+					}
+				}
+
+			//Hysteresis/thresholding
+			for(int x=1;x<1280 - 1;x++)
+				for(int y=1;y<720 - 1;y++)
+					if(grad2[y*1280 + x] < 100 )
+						blurred[y*1280 + x] = 0;
+					else if(grad2[y*1280 + x] > 200 )
+						blurred[y*1280 + x] = (byte) 0xFF;
+					else{
+						if(
+								grad2[y*1280 + x + 1] > 200 ||
+								grad2[y*1280 + x - 1] > 200 ||
+								grad2[(y + 1)*1280 + x + 1] > 200 ||
+								grad2[(y + 1)*1280 + x - 1] > 200 ||
+								grad2[(y - 1)*1280 + x + 1] > 200 ||
+								grad2[(y - 1)*1280 + x - 1] > 200 ||
+								grad2[(y + 1)*1280 + x] > 200 ||
+								grad2[(y - 1)*1280 + x] > 200)
+							blurred[y*1280 + x] = (byte) 0xFF;
+						else
+							blurred[y*1280 + x] = 0;
+					}
+
+
+
+
+
+
 			//Render the background that is the live camera preview
 			renderBackground(cameraImage);
 
 			//Get the 3D tag poses from Chilitags
-			ObjectTransform[] tags = chilitags.estimate(cameraImage);
+			ObjectTransform[] tags = chilitags.estimateFromEdges(cameraImage,blurred);
 
 			//Render the tags' reference frames on the image
 			renderTagFrames(tags);
