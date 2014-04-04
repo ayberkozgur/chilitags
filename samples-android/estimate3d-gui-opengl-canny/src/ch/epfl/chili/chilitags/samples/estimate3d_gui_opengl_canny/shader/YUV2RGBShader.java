@@ -25,7 +25,6 @@ public class YUV2RGBShader extends Shader {
 				"#endif												\n" +
 
 				"varying vec2 v_texCoord;							\n" +
-				"varying vec2 v_texCoordChroma;						\n" +
 				"uniform sampler2D y_texture;						\n" +
 				"uniform sampler2D uv_texture;						\n" +
 
