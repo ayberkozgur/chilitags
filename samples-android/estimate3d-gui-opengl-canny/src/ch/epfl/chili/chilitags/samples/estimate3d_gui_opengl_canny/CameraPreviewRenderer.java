@@ -11,11 +11,13 @@ import javax.microedition.khronos.opengles.GL10;
 
 import ch.epfl.chili.chilitags.Chilitags3D;
 import ch.epfl.chili.chilitags.ObjectTransform;
+import ch.epfl.chili.chilitags.samples.estimate3d_gui_opengl_canny.shader.GaussianBlurShader;
 import ch.epfl.chili.chilitags.samples.estimate3d_gui_opengl_canny.shader.Shader;
 import ch.epfl.chili.chilitags.samples.estimate3d_gui_opengl_canny.shader.YUV2RGBShader;
 import android.graphics.Point;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
+import android.util.Log;
 
 public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 
@@ -28,9 +30,27 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 
 	//The Y and UV texture objects
 	private int yTextureHandle;
-	private int uvTextureHandle;
+//	private int uvTextureHandle;
 	private int[] yTextureNames;
-	private int[] uvTextureNames;
+//	private int[] uvTextureNames;
+	
+	
+	float[] relativeCoords = new float[]{
+			-2.0f/1280,-2.0f/720,		-1.0f/1280,-2.0f/720,		0.0f/1280,-2.0f/720,		1.0f/1280,-2.0f/720,		2.0f/1280,-2.0f/720,
+			-2.0f/1280,-1.0f/720,		-1.0f/1280,-1.0f/720,		0.0f/1280,-1.0f/720,		1.0f/1280,-1.0f/720,		2.0f/1280,-1.0f/720,
+			-2.0f/1280,0.0f/720,		-1.0f/1280,0.0f/720,		0.0f/1280,0.0f/720,			1.0f/1280,0.0f/720,			2.0f/1280,0.0f/720,
+			-2.0f/1280,1.0f/720,		-1.0f/1280,1.0f/720,		0.0f/1280,1.0f/720,			1.0f/1280,1.0f/720,			2.0f/1280,1.0f/720,
+			-2.0f/1280,2.0f/720,		-1.0f/1280,2.0f/720,		0.0f/1280,2.0f/720,			1.0f/1280,2.0f/720,			2.0f/1280,2.0f/720
+		};
+		float[] kernel = new float[]{
+				2.0f,  4.0f,  5.0f,  4.0f,  2.0f,
+				4.0f,  9.0f, 12.0f,  9.0f,  4.0f,
+				5.0f, 12.0f, 15.0f, 12.0f,  5.0f,
+				4.0f,  9.0f, 12.0f,  9.0f,  4.0f,
+				2.0f,  4.0f,  5.0f,  4.0f,  2.0f};
+	
+	private int relativeCoordsHandle;
+	private int kernelHandle;
 
 	private IntBuffer frameBuffer; //The frame buffer
 	private IntBuffer renderBuffer; //The render buffer
@@ -83,7 +103,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		 */
 
 		//Create our shaders
-		yuv2rgbShader = new YUV2RGBShader();
+		yuv2rgbShader = new GaussianBlurShader();
 		
 		//Allocate vertices of our mesh on native memory space
 		vertices = ByteBuffer.allocateDirect(verticesData.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
@@ -155,6 +175,18 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		positionHandle = GLES20.glGetAttribLocation(yuv2rgbShader.getHandle(), "a_position");
 		texCoordHandle = GLES20.glGetAttribLocation(yuv2rgbShader.getHandle(), "a_texCoord");
 
+		
+		
+		
+		
+		
+		relativeCoordsHandle = GLES20.glGetUniformLocation(yuv2rgbShader.getHandle(), "relative_coords");
+		kernelHandle = GLES20.glGetUniformLocation(yuv2rgbShader.getHandle(), "kernel");
+		
+		
+		
+		
+		
 		//Create the Y texture object
 		GLES20.glEnable(GLES20.GL_TEXTURE_2D);
 		yTextureHandle = GLES20.glGetUniformLocation(yuv2rgbShader.getHandle(), "y_texture");
@@ -162,10 +194,10 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		GLES20.glGenTextures(1, yTextureNames, 0);
 
 		//Create the UV texture object
-		GLES20.glEnable(GLES20.GL_TEXTURE_2D);
+		/*GLES20.glEnable(GLES20.GL_TEXTURE_2D);
 		uvTextureHandle = GLES20.glGetUniformLocation(yuv2rgbShader.getHandle(), "uv_texture");
 		uvTextureNames = new int[1];
-		GLES20.glGenTextures(1, uvTextureNames, 0);
+		GLES20.glGenTextures(1, uvTextureNames, 0);*/
 
 		//Clear the screen
 		GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -219,7 +251,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		byte[] cameraImage = camController.getPictureData();
 		if(cameraImage != null){
 
-			System.arraycopy(cameraImage, 0, buf, 0, 1280*720);
+			/*System.arraycopy(cameraImage, 0, buf, 0, 1280*720);
 			final int[] gaussian = {
 					2,4,5,4,2,
 					4,9,12,9,4,
@@ -330,7 +362,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 						else
 							blurred[y*1280 + x] = 0;
 					}
-
+			*/
 
 
 
@@ -340,7 +372,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 			renderBackground(cameraImage);
 
 			//Get the 3D tag poses from Chilitags
-			ObjectTransform[] tags = chilitags.estimateFromEdges(cameraImage,blurred);
+			ObjectTransform[] tags = chilitags.estimate(cameraImage);
 
 			//Render the tags' reference frames on the image
 			renderTagFrames(tags);
@@ -480,7 +512,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		/*
 		 * Load the UV texture
 		 */
-
+/*
 		//Set texture slot 1 as active and bind our texture object to it
 		GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
 		GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, uvTextureNames[0]);
@@ -499,14 +531,52 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
 
 		//Set the uniform uv_texture object in the shader code to the texture at slot 1
-		GLES20.glUniform1i(uvTextureHandle, 1);
+		GLES20.glUniform1i(uvTextureHandle, 1);*/
 
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		GLES20.glUniform2fv(relativeCoordsHandle, 25, relativeCoords, 0);
+		GLES20.glUniform1fv(kernelHandle, 25, kernel, 0);
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		/*
 		 * Actual rendering
 		 */
-
+		long ms = System.currentTimeMillis();
 		GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, indices);
-
+		Log.i("time",(System.currentTimeMillis() - ms)+"");
+		
 		//Unload our vertex array
 		GLES20.glDisableVertexAttribArray(positionHandle);
 		GLES20.glDisableVertexAttribArray(texCoordHandle);
