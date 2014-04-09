@@ -91,7 +91,7 @@ public class GLESLine {
 	public void draw() { 
 
 		//Use our shader
-		GLES20.glUseProgram(shader.getHandle());
+		shader.begin();
 
 		//Get the handle to the a_position attribute of our shader code
 		positionHandle = GLES20.glGetAttribLocation(shader.getHandle(), "a_position");

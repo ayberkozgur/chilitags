@@ -23,5 +23,11 @@ public class LineShader extends Shader {
 				"void main() {					\n" +
 				"  gl_FragColor = v_color;		\n" +
 				"}								\n";
-	} 
+	}
+
+	@Override
+	protected void loadUniforms() { /*No auto uniforms*/ }
+
+	@Override
+	protected void getUniformHandles() { /*No auto uniforms*/ } 
 }

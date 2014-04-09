@@ -30,28 +30,10 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 
 	//The Y and UV texture objects
 	private int yTextureHandle;
-//	private int uvTextureHandle;
+	//	private int uvTextureHandle;
 	private int[] yTextureNames;
-//	private int[] uvTextureNames;
+	//	private int[] uvTextureNames;
 	
-	
-	float[] relativeCoords = new float[]{
-			-2.0f/1280,-2.0f/720,		-1.0f/1280,-2.0f/720,		0.0f/1280,-2.0f/720,		1.0f/1280,-2.0f/720,		2.0f/1280,-2.0f/720,
-			-2.0f/1280,-1.0f/720,		-1.0f/1280,-1.0f/720,		0.0f/1280,-1.0f/720,		1.0f/1280,-1.0f/720,		2.0f/1280,-1.0f/720,
-			-2.0f/1280,0.0f/720,		-1.0f/1280,0.0f/720,		0.0f/1280,0.0f/720,			1.0f/1280,0.0f/720,			2.0f/1280,0.0f/720,
-			-2.0f/1280,1.0f/720,		-1.0f/1280,1.0f/720,		0.0f/1280,1.0f/720,			1.0f/1280,1.0f/720,			2.0f/1280,1.0f/720,
-			-2.0f/1280,2.0f/720,		-1.0f/1280,2.0f/720,		0.0f/1280,2.0f/720,			1.0f/1280,2.0f/720,			2.0f/1280,2.0f/720
-		};
-		float[] kernel = new float[]{
-				2.0f,  4.0f,  5.0f,  4.0f,  2.0f,
-				4.0f,  9.0f, 12.0f,  9.0f,  4.0f,
-				5.0f, 12.0f, 15.0f, 12.0f,  5.0f,
-				4.0f,  9.0f, 12.0f,  9.0f,  4.0f,
-				2.0f,  4.0f,  5.0f,  4.0f,  2.0f};
-	
-	private int relativeCoordsHandle;
-	private int kernelHandle;
-
 	private IntBuffer frameBuffer; //The frame buffer
 	private IntBuffer renderBuffer; //The render buffer
 	private IntBuffer parameterBufferWidth;
@@ -62,7 +44,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 
 	//private int shaderProgramHandle; //The shader program object that will do the YUV-RGB conversion for us
 	private Shader yuv2rgbShader;
-	
+
 	private int positionHandle; //The location of the a_position attribute object
 	private int texCoordHandle; //The location of the a_texCoord attribute object
 
@@ -104,7 +86,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 
 		//Create our shaders
 		yuv2rgbShader = new GaussianBlurShader();
-		
+
 		//Allocate vertices of our mesh on native memory space
 		vertices = ByteBuffer.allocateDirect(verticesData.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
 		vertices.put(verticesData);
@@ -175,18 +157,6 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		positionHandle = GLES20.glGetAttribLocation(yuv2rgbShader.getHandle(), "a_position");
 		texCoordHandle = GLES20.glGetAttribLocation(yuv2rgbShader.getHandle(), "a_texCoord");
 
-		
-		
-		
-		
-		
-		relativeCoordsHandle = GLES20.glGetUniformLocation(yuv2rgbShader.getHandle(), "relative_coords");
-		kernelHandle = GLES20.glGetUniformLocation(yuv2rgbShader.getHandle(), "kernel");
-		
-		
-		
-		
-		
 		//Create the Y texture object
 		GLES20.glEnable(GLES20.GL_TEXTURE_2D);
 		yTextureHandle = GLES20.glGetUniformLocation(yuv2rgbShader.getHandle(), "y_texture");
@@ -222,13 +192,13 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 
 
 
-
+	/*
 	byte[] blurred = new byte[1280*720];
 	byte[] buf = new byte[1280*720];
 	int[] grad = new int[1280*720];
 	int[] grad2 = new int[1280*720];
 	byte[] dir = new byte[1280*720];
-
+	 */
 
 
 
@@ -362,7 +332,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 						else
 							blurred[y*1280 + x] = 0;
 					}
-			*/
+			 */
 
 
 
@@ -392,7 +362,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		final double[] WORLD_ARROW_Y = 		{0.0,			TAG_SIZE,	0.0,		1.0};
 		final double[] WORLD_ARROW_Z = 		{0.0,			0.0,		TAG_SIZE,	1.0};
 
-		
+
 
 		for(ObjectTransform tag : tags){
 
@@ -473,8 +443,8 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		uvBuffer.put(image, camController.cameraWidth*camController.cameraHeight, camController.cameraWidth*camController.cameraHeight/2);
 		uvBuffer.position(0);
 
-		//Use the shader program object
-		GLES20.glUseProgram(yuv2rgbShader.getHandle());
+		//Load the shader and auto uniforms
+		yuv2rgbShader.begin();
 
 		//Load the vertex position
 		vertices.position(0);
@@ -512,7 +482,7 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		/*
 		 * Load the UV texture
 		 */
-/*
+		/*
 		//Set texture slot 1 as active and bind our texture object to it
 		GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
 		GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, uvTextureNames[0]);
@@ -533,50 +503,13 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		//Set the uniform uv_texture object in the shader code to the texture at slot 1
 		GLES20.glUniform1i(uvTextureHandle, 1);*/
 
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		GLES20.glUniform2fv(relativeCoordsHandle, 25, relativeCoords, 0);
-		GLES20.glUniform1fv(kernelHandle, 25, kernel, 0);
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
 		/*
 		 * Actual rendering
 		 */
 		long ms = System.currentTimeMillis();
 		GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, indices);
 		Log.i("time",(System.currentTimeMillis() - ms)+"");
-		
+
 		//Unload our vertex array
 		GLES20.glDisableVertexAttribArray(positionHandle);
 		GLES20.glDisableVertexAttribArray(texCoordHandle);

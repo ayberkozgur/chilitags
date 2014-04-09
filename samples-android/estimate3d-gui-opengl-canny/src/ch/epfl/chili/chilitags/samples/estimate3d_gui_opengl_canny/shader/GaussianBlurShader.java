@@ -1,11 +1,58 @@
 package ch.epfl.chili.chilitags.samples.estimate3d_gui_opengl_canny.shader;
 
+import android.opengl.GLES20;
+
 /**
  * 5x5 Gaussian blur shader.
  * @author Ayberk Özgür
  */
 public class GaussianBlurShader extends Shader {
-	
+
+	/**
+	 * The handle to the relative coordinates uniform
+	 */
+	private int relativeCoordsHandle;
+
+	/**
+	 * The handle to the kernel uniform
+	 */
+	private int kernelHandle;
+
+	/**
+	 * The Gaussian blur kernel
+	 */
+	public final float[] kernel = new float[]{
+			2.0f/159.0f,  4.0f/159.0f,  5.0f/159.0f,  4.0f/159.0f,  2.0f/159.0f,
+			4.0f/159.0f,  9.0f/159.0f, 12.0f/159.0f,  9.0f/159.0f,  4.0f/159.0f,
+			5.0f/159.0f, 12.0f/159.0f, 15.0f/159.0f, 12.0f/159.0f,  5.0f/159.0f,
+			4.0f/159.0f,  9.0f/159.0f, 12.0f/159.0f,  9.0f/159.0f,  4.0f/159.0f,
+			2.0f/159.0f,  4.0f/159.0f,  5.0f/159.0f,  4.0f/159.0f,  2.0f/159.0f};
+
+	/**
+	 * The coordinates to apply the kernel to (in texel scale: [0,1]) relative to the current pixel
+	 */
+	public float[] relativeCoords = new float[]{
+			-2.0f/1280,-2.0f/720,		-1.0f/1280,-2.0f/720,		0.0f/1280,-2.0f/720,		1.0f/1280,-2.0f/720,		2.0f/1280,-2.0f/720,
+			-2.0f/1280,-1.0f/720,		-1.0f/1280,-1.0f/720,		0.0f/1280,-1.0f/720,		1.0f/1280,-1.0f/720,		2.0f/1280,-1.0f/720,
+			-2.0f/1280,0.0f/720,		-1.0f/1280,0.0f/720,		0.0f/1280,0.0f/720,			1.0f/1280,0.0f/720,			2.0f/1280,0.0f/720,
+			-2.0f/1280,1.0f/720,		-1.0f/1280,1.0f/720,		0.0f/1280,1.0f/720,			1.0f/1280,1.0f/720,			2.0f/1280,1.0f/720,
+			-2.0f/1280,2.0f/720,		-1.0f/1280,2.0f/720,		0.0f/1280,2.0f/720,			1.0f/1280,2.0f/720,			2.0f/1280,2.0f/720
+	};
+
+	@Override
+	protected void loadUniforms() {
+		
+		//Load the uniforms
+		GLES20.glUniform2fv(relativeCoordsHandle, 25, relativeCoords, 0);
+		GLES20.glUniform1fv(kernelHandle, 25, kernel, 0);
+	}
+
+	@Override
+	protected void getUniformHandles() {
+		relativeCoordsHandle = GLES20.glGetUniformLocation(getHandle(), "relative_coords");
+		kernelHandle = GLES20.glGetUniformLocation(getHandle(), "kernel");
+	}
+
 	@Override
 	protected String getVertexShader() {
 		return "attribute vec4 a_position;							\n" + 
@@ -26,35 +73,27 @@ public class GaussianBlurShader extends Shader {
 
 				//The Gaussian kernel
 				"uniform float kernel[25];							\n" +
-				//"const float kernel[25] = float[25](				\n" +
-				//"	2.0,  4.0,  5.0,  4.0,  2.0,					\n" +
-				//"	4.0,  9.0, 12.0,  9.0,  4.0,					\n" +
-				//"	5.0, 12.0, 15.0, 12.0,  5.0,					\n" +
-				//"	4.0,  9.0, 12.0,  9.0,  4.0,					\n" +
-				//"	2.0,  4.0,  5.0,  4.0,  2.0);					\n" +
-				"const float kernel_scale = 159.0;					\n" +
-				
+
 				//Our grayscale input texture
 				"uniform sampler2D y_texture;						\n" +
-				
+
 				//The relative coordinates to apply the kernel, in texel space
 				"uniform vec2 relative_coords[25];					\n" +
-				
+
 				"varying vec2 v_texCoord;							\n" +
 
 				"void main (void){									\n" +
 				"	float y = 0.0;									\n" +
 				"	int i;											\n" +
-				
+
 				//Apply kernel
 				"	for(i=0;i<25;i++)								\n" +
 				//We had put the Y values of each pixel to the R,G,B components by GL_LUMINANCE, 
 				//that's why we're pulling it from the R component, we could also use G or B
 				"		y += kernel[i]*texture2D(y_texture, v_texCoord + relative_coords[i]).r;	\n" + 
-				"	y /= kernel_scale;								\n" +
 
 				//We finally set the RGB color of our pixel
 				"	gl_FragColor = vec4(y, y, y, 1.0);				\n" +
 				"}													\n";
-	} 
+	}
 }

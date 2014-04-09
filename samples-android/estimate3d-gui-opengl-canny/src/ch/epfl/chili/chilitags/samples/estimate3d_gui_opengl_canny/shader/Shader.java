@@ -8,19 +8,20 @@ import android.util.Log;
  * @author Ayberk Özgür
  */
 public abstract class Shader {
-	
+
 	/**
 	 * The GL program handle (i.e name)
 	 */
 	private int programHandle;
-	
+
 	/**
 	 * Compiles and loads the shader
 	 */
 	public void load(){
 		programHandle = loadProgram(getVertexShader(), getFragmentShader());
+		getUniformHandles();
 	}
-	
+
 	/**
 	 * Gets the GL program handle (i.e name)
 	 * @return The GL program handle
@@ -28,19 +29,41 @@ public abstract class Shader {
 	public int getHandle(){
 		return programHandle;
 	}
+
+	/**
+	 * Loads the shader and uniforms for rendering
+	 */
+	public void begin(){
+		
+		//Load the shader program object
+		GLES20.glUseProgram(getHandle());
+		
+		//Load the auto uniforms
+		loadUniforms();
+	}
+
+	/**
+	 * Loads the uniforms that can be loaded automatically without manual implementation
+	 */
+	protected abstract void loadUniforms();
 	
+	/**
+	 * Gets the handles of the uniforms that can be loaded automatically without manual implementation
+	 */
+	protected abstract void getUniformHandles();
+
 	/**
 	 * Gets the vertex shader code
 	 * @return The vertex shader code
 	 */
 	protected abstract String getVertexShader();
-	
+
 	/**
 	 * Gets the fragment shader code
 	 * @return The fragment shader code
 	 */
 	protected abstract String getFragmentShader();
-	
+
 	/**
 	 * Compiles the given shader code and returns its program handle.
 	 * 

@@ -49,5 +49,11 @@ public class YUV2RGBShader extends Shader {
 				//We finally set the RGB color of our pixel
 				"	gl_FragColor = vec4(r, g, b, 1.0);				\n" +
 				"}													\n";
-	} 
+	}
+
+	@Override
+	protected void loadUniforms() { /*No auto uniforms*/ }
+
+	@Override
+	protected void getUniformHandles() { /*No auto uniforms*/	} 
 }
