@@ -1,7 +1,9 @@
 package ch.epfl.chili.chilitags.samples.estimate3d_gui_opengl_canny;
 
+import java.io.IOException;
 import java.util.List;
 
+import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.hardware.Camera.Size;
 
@@ -11,6 +13,8 @@ public class CameraController implements Camera.PreviewCallback {
 
 	private Camera camera; //The camera object
 
+	public SurfaceTexture surf;
+	
 	//The camera image size
 	public int cameraWidth;
 	public int cameraHeight;
@@ -18,7 +22,7 @@ public class CameraController implements Camera.PreviewCallback {
 	//The image size that Chilitags will deal with
 	public int processingWidth; 
 	public int processingHeight;
-
+	
 	/**
 	 * Initializes the camera.
 	 */
@@ -26,9 +30,6 @@ public class CameraController implements Camera.PreviewCallback {
 
 		//(Try to) Open the rear camera
 		camera = Camera.open(0);
-
-		//Tell the camera to call us when a preview is ready
-		camera.setPreviewCallbackWithBuffer(this);
 
 		//Set image size during preview
 		Camera.Parameters params = camera.getParameters();
@@ -57,13 +58,25 @@ public class CameraController implements Camera.PreviewCallback {
 		processingWidth = cameraWidth > 640 ? 640 : cameraWidth;
 		processingHeight = cameraHeight * processingWidth / cameraWidth;
 
-		//Start the camera preview
-		camera.startPreview();
-
 		//Set the first buffer, the preview doesn't start unless we set the buffers
-		camera.addCallbackBuffer(image);
+		//camera.addCallbackBuffer(image);
 	}
 
+	public void startPreview(int textureName){
+		
+		surf = new SurfaceTexture(textureName);
+		
+		try {
+			camera.setPreviewTexture(surf);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		//Start the camera preview
+		camera.startPreview();
+	}
+	
 	/**
 	 * Gets the camera image.
 	 * 

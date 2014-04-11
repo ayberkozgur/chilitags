@@ -11,6 +11,7 @@ import javax.microedition.khronos.opengles.GL10;
 import ch.epfl.chili.chilitags.Chilitags3D;
 import ch.epfl.chili.chilitags.ObjectTransform;
 import ch.epfl.chili.chilitags.samples.estimate3d_gui_opengl_canny.shader.GaussianBlurShader;
+import ch.epfl.chili.chilitags.samples.estimate3d_gui_opengl_canny.shader.CameraRGBShader;
 import ch.epfl.chili.chilitags.samples.estimate3d_gui_opengl_canny.shader.Shader;
 import ch.epfl.chili.chilitags.samples.estimate3d_gui_opengl_canny.shader.YUV2RGBShader;
 import android.graphics.Point;
@@ -20,12 +21,32 @@ import android.util.Log;
 
 public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 
+	
+	private static final int GL_TEXTURE_EXTERNAL_OES = 0x8D65;
+	
+	
+	
+	
+	
+	
+	private int[] texName;
+	
+	
+	
+	
+	
+	
+	
+	
 	private CameraController camController; //The camera controller object that will provide the background image
 	private Chilitags3D chilitags; //The Chilitags object that detects the tags
 
 	//The Y and UV buffers that will pass our image channel data to the textures
-	private ByteBuffer yBuffer;
-	private ByteBuffer uvBuffer;
+	//private ByteBuffer yBuffer;
+	//private ByteBuffer uvBuffer;
+	
+	private byte[] buf;
+	ByteBuffer bbuf;
 
 	//The Y and UV texture objects
 	private int yTextureHandle;
@@ -33,10 +54,8 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 	private int[] yuvTextureNames; //Index 0: Y texture, Index 1: UV texture
 	private int[] ppTextureNames; //Pingpong texture names
 
-	//private IntBuffer frameBuffer; //The frame buffer
-	//private IntBuffer renderBuffer; //The render buffer
-	//private IntBuffer parameterBufferWidth;
-	//private IntBuffer parameterBufferHeigth;
+	private int[] renderBufferName;
+	private int[] frameBufferName;
 
 	//Our line object
 	private GLESLine line;
@@ -84,8 +103,9 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		 */
 
 		//Create our shaders
-		yuv2rgbShader = new YUV2RGBShader();
-
+		//yuv2rgbShader = new GaussianBlurShader(camController.cameraWidth,camController.cameraHeight);
+		yuv2rgbShader = new CameraRGBShader();
+		
 		//Allocate vertices of our mesh on native memory space
 		vertices = ByteBuffer.allocateDirect(verticesData.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
 		vertices.put(verticesData);
@@ -97,8 +117,10 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		indices.position(0);
 
 		//Allocate image channel buffers on the native memory space
-		yBuffer = ByteBuffer.allocateDirect(camController.cameraWidth*camController.cameraHeight).order(ByteOrder.nativeOrder());
-		uvBuffer = ByteBuffer.allocateDirect(camController.cameraWidth*camController.cameraHeight/2).order(ByteOrder.nativeOrder()); //We have (width/2*height/2) pixels, each pixel is 2 bytes
+		buf = new byte[camController.processingWidth*camController.processingHeight*4];
+		bbuf = ByteBuffer.allocateDirect(4*camController.processingWidth*camController.processingHeight).order(ByteOrder.nativeOrder());//ByteBuffer.wrap(buf);
+		//yBuffer = ByteBuffer.allocateDirect(camController.cameraWidth*camController.cameraHeight).order(ByteOrder.nativeOrder());
+		//uvBuffer = ByteBuffer.allocateDirect(camController.cameraWidth*camController.cameraHeight/2).order(ByteOrder.nativeOrder()); //We have (width/2*height/2) pixels, each pixel is 2 bytes
 
 		//Allocate our line object
 		line = new GLESLine();
@@ -125,17 +147,26 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		/*
 		 * Prepare our frame buffer and render buffer
 		 */
-		/*
-		GLuint textureA;
-		GLES20.glEnable(GLES20.GL_TEXTURE_2D);
-		GLES20.glGenTextures(1, 
-		GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureA);
-		GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
-		GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-		GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-		GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
-		GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE, 1280, 720, 0, GLES20.GL_LUMINANCE,GLES20.GL_UNSIGNED_BYTE, null);*/
-
+		
+		//Get a new handle for our render buffer
+		renderBufferName = new int[1];
+		GLES20.glGenRenderbuffers(1, renderBufferName, 0);
+		
+		//Allocate space for our render buffer
+		GLES20.glBindRenderbuffer(GLES20.GL_RENDERBUFFER, renderBufferName[0]);
+		GLES20.glRenderbufferStorage(GLES20.GL_RENDERBUFFER, GLES20.GL_RGB565, camController.processingWidth, camController.processingHeight);
+		GLES20.glBindRenderbuffer(GLES20.GL_RENDERBUFFER, 0);
+		
+		//Get a new handle for our framebuffer
+		frameBufferName = new int[1];
+		GLES20.glGenFramebuffers(1, frameBufferName, 0);
+		
+		//Attach our render buffer to our frame buffer
+		GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, frameBufferName[0]);
+		GLES20.glFramebufferRenderbuffer(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_RENDERBUFFER, renderBufferName[0]);
+		GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+		
+		
 		/*frameBuffer = IntBuffer.allocate(1);
 		renderBuffer = IntBuffer.allocate(1);
 		GLES20.glEnable(GLES20.GL_TEXTURE_2D);
@@ -167,20 +198,70 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		texCoordHandle = GLES20.glGetAttribLocation(yuv2rgbShader.getHandle(), "a_texCoord");
 
 		//Get locations of uniforms that point to our textures
-		yTextureHandle = GLES20.glGetUniformLocation(yuv2rgbShader.getHandle(), "y_texture");
-		uvTextureHandle = GLES20.glGetUniformLocation(yuv2rgbShader.getHandle(), "uv_texture");
+		yTextureHandle = GLES20.glGetUniformLocation(yuv2rgbShader.getHandle(), "texture");
+		//yTextureHandle = GLES20.glGetUniformLocation(yuv2rgbShader.getHandle(), "y_texture");
+		//uvTextureHandle = GLES20.glGetUniformLocation(yuv2rgbShader.getHandle(), "uv_texture");
 
+		
+		
+		
+		
+		
+
+		texName = new int[1];
+		GLES20.glGenTextures(1, texName, 0);
+
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		/*
 		 * Prepare the texture stuff
 		 */
 
 		//Create the YUV texture object names
-		GLES20.glEnable(GLES20.GL_TEXTURE_2D);
+		/*GLES20.glEnable(GLES20.GL_TEXTURE_2D);
 		yuvTextureNames = new int[2];
 		GLES20.glGenTextures(2, yuvTextureNames, 0);
-		
+
+		//Create the ping pong texture object names
+		ppTextureNames = new int[2];
+		GLES20.glGenTextures(2, ppTextureNames, 0);
+
+		//Ping pong 0
+		GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, ppTextureNames[0]);
+
+		//Use linear interpolation when magnifying/minifying the texture to areas larger/smaller than the texture size
+		GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+		GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+		GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+		GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+
+		//Create the texture
+		GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE, camController.cameraWidth, camController.cameraHeight, 0, GLES20.GL_LUMINANCE,GLES20.GL_UNSIGNED_BYTE, null);
+
+		//Ping pong 1
+		GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, ppTextureNames[1]);
+
+		//Use linear interpolation when magnifying/minifying the texture to areas larger/smaller than the texture size
+		GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+		GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+		GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+		GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+
+		//Create the texture
+		GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE, camController.cameraWidth, camController.cameraHeight, 0, GLES20.GL_LUMINANCE,GLES20.GL_UNSIGNED_BYTE, null);
+*/
 		//Clear the screen
 		GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		
+		camController.startPreview(texName[0]);
 	}
 
 	@Override
@@ -224,12 +305,14 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 	@Override
 	public void onDrawFrame(GL10 unused) {
 
+		//long ms = System.currentTimeMillis();
+		
 		//Clear the screen
 		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
 		//Get the camera image
-		byte[] cameraImage = camController.getPictureData();
-		if(cameraImage != null){
+		//byte[] cameraImage = camController.getPictureData();
+		//if(cameraImage != null){
 
 			/*System.arraycopy(cameraImage, 0, buf, 0, 1280*720);
 			final int[] gaussian = {
@@ -349,14 +432,22 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 
 
 			//Render the background that is the live camera preview
-			renderBackground(cameraImage);
-
+			
+			
+			
+			//renderBackground(cameraImage);
+			renderBackground(null);
+			
+			
+			
 			//Get the 3D tag poses from Chilitags
-			ObjectTransform[] tags = chilitags.estimate(cameraImage);
+			//ObjectTransform[] tags = chilitags.estimate(cameraImage);
 
 			//Render the tags' reference frames on the image
-			renderTagFrames(tags);
-		}
+			//renderTagFrames(tags);
+		//}
+		
+		//Log.i("time",(System.currentTimeMillis() - ms)+"");
 	}
 
 	/**
@@ -439,20 +530,22 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 	 * @param image The YUV-NV21 image to be drawn
 	 */
 	private void renderBackground(byte[] image){
-
+		
 		/*
 		 * Because of Java's limitations, we can't reference the middle of an array and 
 		 * we must copy the channels in our byte array into buffers before setting them to textures
 		 */
 
 		//Copy the Y channel of the image into its buffer, the first (width*height) bytes are the Y channel
-		yBuffer.put(image, 0, camController.cameraWidth*camController.cameraHeight);
-		yBuffer.position(0);
+		//yBuffer.put(image, 0, camController.cameraWidth*camController.cameraHeight);
+		//yBuffer.position(0);
 
 		//Copy the UV channels of the image into their buffer, the following (width*height/2) bytes are the UV channel; the U and V bytes are interspread
-		uvBuffer.put(image, camController.cameraWidth*camController.cameraHeight, camController.cameraWidth*camController.cameraHeight/2);
-		uvBuffer.position(0);
+		//uvBuffer.put(image, camController.cameraWidth*camController.cameraHeight, camController.cameraWidth*camController.cameraHeight/2);
+		//uvBuffer.position(0);
 
+		
+		
 		//Load the shader and auto uniforms
 		yuv2rgbShader.begin();
 
@@ -473,7 +566,12 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		 */
 
 		//Set texture slot 0 as active and bind our texture object to it
+		camController.surf.updateTexImage();
 		GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+		GLES20.glBindTexture(GL_TEXTURE_EXTERNAL_OES, texName[0]);
+		GLES20.glUniform1i(yTextureHandle, 0);
+		
+		/*GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
 		GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, yuvTextureNames[0]);
 
 		//Y texture is (width*height) in size and each pixel is one byte; by setting GL_LUMINANCE, OpenGL puts this byte into R,G and B components of the texture
@@ -487,12 +585,13 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
 
 		//Set the uniform y_texture object in the shader code to the texture at slot 0
-		GLES20.glUniform1i(yTextureHandle, 0);
+		GLES20.glUniform1i(yTextureHandle, 0);*/
 
 		/*
 		 * Load the UV texture
 		 */
-
+		
+/*
 		//Set texture slot 1 as active and bind our texture object to it
 		GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
 		GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, yuvTextureNames[1]);
@@ -511,15 +610,34 @@ public class CameraPreviewRenderer implements GLSurfaceView.Renderer {
 		GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
 
 		//Set the uniform uv_texture object in the shader code to the texture at slot 1
-		GLES20.glUniform1i(uvTextureHandle, 1);
+		GLES20.glUniform1i(uvTextureHandle, 1);*/
 
 		/*
 		 * Actual rendering
 		 */
-		long ms = System.currentTimeMillis();
+		
 		GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, indices);
-		Log.i("time",(System.currentTimeMillis() - ms)+"");
+		
+		GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, frameBufferName[0]);
+		GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, indices);
+		
+		
+		
 
+		
+		
+		
+		
+		
+		long ms = System.currentTimeMillis();
+		GLES20.glReadPixels(0, 0, camController.processingWidth, camController.processingHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, bbuf);
+		Log.i("time",""+(System.currentTimeMillis() - ms));
+		
+		
+		GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+		
+		//Log.i("time",(buf[0] & 0xFF)+"");
+		
 		//Unload our vertex array
 		GLES20.glDisableVertexAttribArray(positionHandle);
 		GLES20.glDisableVertexAttribArray(texCoordHandle);
