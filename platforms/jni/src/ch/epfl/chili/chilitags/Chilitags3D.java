@@ -67,7 +67,7 @@ public class Chilitags3D {
 	 */
 	private native long alloc(int width, int height, int processingWidth, int processingHeight, int inputType);
 	private native void free(long ptr);
-	private native void readTagConfigurationImpl(long ptr, String filename, boolean omitOtherTags);
+	private native void readTagConfigurationImpl(long ptr, String filenameOrContent, boolean omitOtherTags, boolean stringIsContent);
 	private native CVSize readCalibrationImpl(long ptr, String filename);
 	private native ObjectTransform[] estimateImpl(long ptr, byte[] imageData);
 	private native void setCalibrationImpl(long ptr, double[] cameraMatrix, double[] distortionCoeffs);
@@ -94,13 +94,14 @@ public class Chilitags3D {
 	}
 
 	/**
-	 * Reads the tag configuration file. 
+	 * Reads the tag configuration.
 	 * 
-	 * @param filename Full path to the tag configuration file
+	 * @param filenameOrContent Full path to the tag configuration file; or the content itself as a string
 	 * @param omitOtherTags Whether to ignore tags that are not defined in the configuration file
+	 * @param stringIsContent Whether filenameOrContent is the tag configuration itself as a string
 	 */
-	public void readTagConfiguration(String filename, boolean omitOtherTags){
-		readTagConfigurationImpl(ptr,filename,omitOtherTags);
+	public void readTagConfiguration(String filenameOrContent, boolean omitOtherTags, boolean stringIsContent){
+		readTagConfigurationImpl(ptr,filenameOrContent,omitOtherTags,stringIsContent);
 	}
 
 	/**

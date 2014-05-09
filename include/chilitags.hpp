@@ -322,19 +322,24 @@ std::map<std::string, cv::Matx44d> estimate(const cv::Mat &inputImage);
     degradation of the estimation, should some of the tag be misdetected or
     occluded.
 
-    \param filename The name of the YAML configuration file describing rigid
-    clusters of tags. The library is distributed with a sample
-    configuration file documenting the expected format.
+    \param filenameOrContent The name of the YAML configuration file describing rigid
+    clusters of tags; or the content of the file as a string. The library is
+    distributed with a sample configuration file documenting the expected format.
 
     \param omitOtherTags If true, ignore the tags that are not explicitly
     listed in the configuration file. If false (default),
     Chilitags3D::estimate() estimates the 3D pose of all the detected tags. You
     can set the size of tags not described in the configuration file with
     setDefaultTagSize(). 
+
+    \param stringIsContent If true, filenameOrContent is read as a string which
+    contains the whole tag configuration. If false, filenameOrContent is read as
+    a file.
  */
 void readTagConfiguration(
-    const std::string &filename,
-    bool omitOtherTags = false);
+    const std::string &filenameOrContent,
+    bool omitOtherTags = false,
+    bool stringIsContent = false);
 
 /**
     Sets the default size of tags (used to compute their 3D pose) when not

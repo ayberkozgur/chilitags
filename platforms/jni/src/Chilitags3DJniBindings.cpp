@@ -65,8 +65,8 @@ JNI(void,free)(JNIEnv* env, jclass* class_, jlong ptr){
 	delete GET_OBJ(ptr);
 }
 
-JNI(void,readTagConfigurationImpl)(JNIEnv* env, jclass* class_, jlong ptr, jstring filename, jboolean omitOtherTags){
-	GET_OBJ(ptr)->readTagConfiguration(env->GetStringUTFChars(filename, 0),omitOtherTags);
+JNI(void,readTagConfigurationImpl)(JNIEnv* env, jclass* class_, jlong ptr, jstring filenameOrContent, jboolean omitOtherTags, jboolean stringIsContent){
+	GET_OBJ(ptr)->readTagConfiguration(env->GetStringUTFChars(filenameOrContent, 0),omitOtherTags,stringIsContent);
 }
 
 JNI(jobject,readCalibrationImpl)(JNIEnv* env, jclass* class_, jlong ptr, jstring filename){
