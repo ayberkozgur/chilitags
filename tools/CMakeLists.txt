@@ -21,4 +21,9 @@
 add_executable(chilitags-creator creator/creator.cpp)
 target_link_libraries( chilitags-creator ${OpenCV_LIBS} )
 target_link_libraries( chilitags-creator chilitags )
+
+add_executable(chilitags-svg-writer svg-writer/svg-writer.cpp)
+target_link_libraries( chilitags-svg-writer ${OpenCV_LIBS} )
+target_link_libraries( chilitags-svg-writer chilitags )
+
 install(TARGETS chilitags-creator RUNTIME DESTINATION bin)
