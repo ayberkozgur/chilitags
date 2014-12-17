@@ -191,8 +191,9 @@ public:
      * @param id Unique identifier of the object
      * @param measuredTrans Translation measurement, also the output, 3x1 vector: (x,y,z)
      * @param measuredRot Rotation measurement, also the output, 3x1 axis-angle representation: (rx,ry,rz)
+     * @param confidence Confidence of this measurement between 0 (exclusive) and 1
      */
-    void operator()(std::string const& id, cv::Mat& measuredTrans, cv::Mat& measuredRot);
+    void operator()(std::string const& id, cv::Mat& measuredTrans, cv::Mat& measuredRot, RealT confidence);
 
 private:
 

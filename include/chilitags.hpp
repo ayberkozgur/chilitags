@@ -43,7 +43,18 @@ namespace chilitags {
  */
 typedef cv::Matx<float, 4, 2> Quad;
 
-typedef std::map<int, Quad> TagCornerMap;
+/**
+ * @brief Tag corner locations and the confidence between 0-1 depending on tracking and detection
+ */
+typedef struct{
+    Quad corners;
+    float confidence;
+} QuadDetection;
+
+/**
+ * @brief Maps tag ID to the corner detection
+ */
+typedef std::map<int, QuadDetection> TagCornerMap;
 
 /**
     This class is the core of detection of chilitags.

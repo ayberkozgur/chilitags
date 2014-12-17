@@ -201,7 +201,7 @@ void Filter3D<RealT>::operator()(typename Chilitags3D_<RealT>::TagPoseMap& tags)
 }
 
 template<typename RealT>
-void Filter3D<RealT>::operator()(std::string const& id, cv::Mat& measuredTrans, cv::Mat& measuredRot)
+void Filter3D<RealT>::operator()(std::string const& id, cv::Mat& measuredTrans, cv::Mat& measuredRot, RealT confidence)
 {
     //Create&insert or return the related filter
     //Second set of 4 params are for Kalman filter: # of state dimensions, # of measurement dimensions,
@@ -232,6 +232,7 @@ void Filter3D<RealT>::operator()(std::string const& id, cv::Mat& measuredTrans, 
 
         //Do the correction step
         shortestPathQuat(prevQuat);
+        filter.measurementNoiseCov = (1.0f/confidence)*mR;
         filter.correct(mTempState).copyTo(mTempState);
         normalizeQuat();
 

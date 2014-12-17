@@ -104,12 +104,12 @@ int main(int argc, char* argv[])
         // We dont want to draw directly on the input image, so we clone it
         cv::Mat outputImage = inputImage.clone();
 
-        for (const std::pair<int, chilitags::Quad> & tag : tags) {
+        for (const std::pair<int, chilitags::QuadDetection> & tag : tags) {
 
             int id = tag.first;
             // We wrap the corner matrix into a datastructure that allows an
             // easy access to the coordinates
-            const cv::Mat_<cv::Point2f> corners(tag.second);
+            const cv::Mat_<cv::Point2f> corners(tag.second.corners);
 
             // We start by drawing the borders of the tag
             for (size_t i = 0; i < 4; ++i) {

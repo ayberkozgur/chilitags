@@ -143,10 +143,10 @@ void drawTags(
     cv::Scalar COLOR = detection ?
         cv::Scalar(0, 0, 255):
         cv::Scalar(255, 0, 0);
-        
+
     for (const auto & tag : tags) {
 
-        const cv::Mat_<cv::Point2f> corners(tag.second);
+        const cv::Mat_<cv::Point2f> corners(tag.second.corners);
 
         for (size_t i = 0; i < 4; ++i) {
             static const int SHIFT = 16;

@@ -52,7 +52,7 @@ TEST(Integration, Minimal) {
     // A pixel is a 1x1 square around its center
     cv::add(expectedCorners, cv::Scalar::all(-0.5f), expectedCorners);
 
-    auto actualCorners = tags.cbegin()->second;
+    auto actualCorners = tags.cbegin()->second.corners;
     for (int i : {0,1,2,3}) {
         EXPECT_GT(0.1f, cv::norm(actualCorners.row(i) - expectedCorners.row(i)))
         << "with i=" << i;
@@ -96,11 +96,11 @@ TEST(Integration, MaxWidth) {
 
         for (int i : {0,1,2,3}) {
             EXPECT_GT(3.0f, cv::norm(
-                   withIt->second.row(i) -
-                withoutIt->second.row(i)))
+                   withIt->second.corners.row(i) -
+                withoutIt->second.corners.row(i)))
             << "with i=" << i
-            << ",\n withIt[i]=" << withIt->second.row(i)
-            << ",\n withoutIt[i]=" << withoutIt->second.row(i);
+            << ",\n withIt[i]=" << withIt->second.corners.row(i)
+            << ",\n withoutIt[i]=" << withoutIt->second.corners.row(i);
         }
     }
 }

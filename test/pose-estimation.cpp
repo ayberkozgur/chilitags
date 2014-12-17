@@ -103,13 +103,14 @@ TEST(Estimate3dPose, FreeTags) {
     auto expectedTransformation = makeTransformation(35,45,65,20,40,60);
 
     float size = 37;
-    chilitags::Quad corners = makeTransformedCorners(expectedTransformation, size);
+    chilitags::QuadDetection quad;
+    quad.corners = makeTransformedCorners(expectedTransformation, size);
 
     chilitags::Chilitags3D chilitags3D(CAMERA_SIZE);
     chilitags3D.setDefaultTagSize(size);
 
     int tagId = 0;
-    auto result = chilitags3D.estimate({{tagId,corners}});
+    auto result = chilitags3D.estimate({{tagId,quad}});
     ASSERT_EQ(1, result.size());
 
     std::string actualID = result.cbegin()->first;
@@ -132,7 +133,7 @@ TEST(Estimate3dPose, Configurations) {
 
     chilitags::TagCornerMap tags;
     for (std::size_t i = 0; i<ids.size(); ++i) {
-        tags[ids[i]] = makeTransformedCorners(tagTransformations[i], sizes[i]);
+        tags[ids[i]].corners = makeTransformedCorners(tagTransformations[i], sizes[i]);
     }
 
     chilitags::Chilitags3D::TagPoseMap expected = {

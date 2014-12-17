@@ -113,7 +113,8 @@ template<typename RealT>
 void EstimatePose3D<RealT>::operator()(std::string const& name,
         std::vector<cv::Point3_<RealT>> const& objectPoints,
         cv::Mat_<cv::Point2f> const& imagePoints,
-        typename Chilitags3D_<RealT>::TagPoseMap& objects)
+        typename Chilitags3D_<RealT>::TagPoseMap& objects,
+        RealT confidence)
 {
 
     // Find the 3D pose of our tag
@@ -131,7 +132,7 @@ void EstimatePose3D<RealT>::operator()(std::string const& name,
         return;
 
     if(mFilter3DEnabled)
-        mFilter3D(name, mTempTranslation, mTempRotation);
+        mFilter3D(name, mTempTranslation, mTempRotation, confidence);
 
     cv::Rodrigues(mTempRotation, mTempRotMat);
 

@@ -62,20 +62,29 @@ void Detect::doDetection(TagCornerMap& tags)
         for(const auto& quad : mFindQuads(mFrame)){
             auto refinedQuad = mRefine(mFrame, quad, 1.5f/10.0f);
             auto tag = mDecode(mReadBits(mFrame, refinedQuad), refinedQuad);
-            if(tag.first != Decode::INVALID_TAG)
-                tags[tag.first] = tag.second;
+            if(tag.first != Decode::INVALID_TAG){
+                QuadDetection& quadAndFlag = tags[tag.first];
+                quadAndFlag.corners = tag.second;
+                quadAndFlag.confidence = 1.0f;
+            }
             else{
                 tag = mDecode(mReadBits(mFrame, quad), quad);
-                if(tag.first != Decode::INVALID_TAG)
-                    tags[tag.first] = tag.second;
+                if(tag.first != Decode::INVALID_TAG){
+                    QuadDetection& quadAndFlag = tags[tag.first];
+                    quadAndFlag.corners = tag.second;
+                    quadAndFlag.confidence = 1.0f;
+                }
             }
         }
     }
     else{
         for(const auto& quad : mFindQuads(mFrame)){
             auto tag = mDecode(mReadBits(mFrame, quad), quad);
-            if(tag.first != Decode::INVALID_TAG)
-                tags[tag.first] = tag.second;
+            if(tag.first != Decode::INVALID_TAG){
+                QuadDetection& quadAndFlag = tags[tag.first];
+                quadAndFlag.corners = tag.second;
+                quadAndFlag.confidence = 1.0f;
+            }
         }
     }
 }

@@ -58,65 +58,88 @@ TagPoseMap estimate(TagCornerMap const& tags, cv::Vec<RealT, 4> const& camDeltaR
     //Pass the latest camera movement difference for prediction (if 3D filtering is enabled)
     mEstimatePose3D.setCamDelta(camDeltaR, camDeltaX);
 
-    //Predict pose for all known tags with camera movement (if 3D filtering is enabled)
+    /*
+     * Predict pose for all known tags with camera movement (if 3D filtering is enabled)
+     */
     mEstimatePose3D(objects);
 
-    //Correct pose prediction with new observations
-    std::map<
-        const std::string,     //name of the object
-        std::pair<
-            std::vector<cv::Point3_<RealT>>,      //points in object
-            std::vector<cv::Point2f>>>   //points in frame
-    objectToPointMapping;
+    /*
+     * Correct pose prediction with new observations
+     */
 
+    //Describes the link between a 2D and 3D detection
+    typedef struct{
+        std::vector<cv::Point3_<RealT>> pointsInObject;
+        std::vector<cv::Point2f> pointsInFrame;
+        RealT sumConfidence = 0.0f;
+    } ObjectDetectDescription;
+    std::map<const std::string, ObjectDetectDescription> objectDescriptionMap;
+
+    //Attribute all tags to either a configuration or take them on their own
     auto configurationIt = mId2Configuration.begin();
     auto configurationEnd = mId2Configuration.end();
-    for (const auto &tag : tags) {
+    for (const auto& tag : tags) {
         int tagId = tag.first;
-        const cv::Mat_<cv::Point2f> corners(tag.second);
+        const cv::Mat_<cv::Point2f> corners(tag.second.corners);
 
-        while (configurationIt != configurationEnd
-               && configurationIt->first < tagId)
+        //Try to find the configuration this tag belongs to, if any
+        while (configurationIt != configurationEnd && configurationIt->first < tagId)
             ++configurationIt;
 
         if (configurationIt != configurationEnd) {
+
+            //This tag belongs to a configuration
             if (configurationIt->first == tagId) {
-                const auto &configuration = configurationIt->second;
+                const auto& configuration = configurationIt->second;
+
+                //Report the tag on its own as well as its configuration
                 if (configuration.second.mKeep) {
                     mEstimatePose3D(cv::format("tag_%d", tagId),
                                           configuration.second.mLocalcorners,
                                           corners,
-                                          objects);
+                                          objects,
+                                          tag.second.confidence);
                 }
-                auto & pointMapping = objectToPointMapping[configuration.first];
-                pointMapping.first.insert(
-                    pointMapping.first.end(),
+
+                //Add this tag detection to the object description
+                auto& objectDescription = objectDescriptionMap[configuration.first];
+                objectDescription.pointsInObject.insert(
+                    objectDescription.pointsInObject.end(),
                     configuration.second.mCorners.begin(),
                     configuration.second.mCorners.end());
-                pointMapping.second.insert(
-                    pointMapping.second.end(),
+                objectDescription.pointsInFrame.insert(
+                    objectDescription.pointsInFrame.end(),
                     corners.begin(),
                     corners.end());
-            } else if (!mOmitOtherTags) {
+                objectDescription.sumConfidence += tag.second.confidence;
+            }
+
+            //This tag does not belong to a configuration
+            else if (!mOmitOtherTags) {
                 mEstimatePose3D(cv::format("tag_%d", tagId),
                                       mDefaultTagCorners,
                                       corners,
-                                      objects);
+                                      objects,
+                                      tag.second.confidence);
             }
+        }
 
-        } else if (!mOmitOtherTags) {
+        //This tag does not belong to a configuration
+        else if (!mOmitOtherTags) {
             mEstimatePose3D(cv::format("tag_%d", tagId),
                                   mDefaultTagCorners,
                                   corners,
-                                  objects);
+                                  objects,
+                                  tag.second.confidence);
         }
     }
 
-    for (auto& objectToPoints : objectToPointMapping) {
-        mEstimatePose3D(objectToPoints.first,
-                              objectToPoints.second.first,
-                              cv::Mat_<cv::Point2f>(objectToPoints.second.second),
-                              objects);
+    for (auto& objectToDescription : objectDescriptionMap) {
+        mEstimatePose3D(objectToDescription.first,
+                              objectToDescription.second.pointsInObject,
+                              cv::Mat_<cv::Point2f>(objectToDescription.second.pointsInFrame),
+                              objects,
+                              objectToDescription.second.sumConfidence/objectToDescription.second.pointsInObject.size());
     }
 
     return objects;

@@ -33,7 +33,7 @@
 
 cv::Scalar COLOR = cv::Scalar(0, 0, 255);
 
-void drawTags(cv::Mat outputImage, std::map<int, chilitags::Quad> const& tags);
+void drawTags(cv::Mat outputImage, std::map<int, chilitags::QuadDetection> const& tags);
 
 int main(int argc, char* argv[])
 {
@@ -119,11 +119,11 @@ int main(int argc, char* argv[])
 
 void drawTags(
         cv::Mat outputImage,
-        const std::map<int, chilitags::Quad> &tags)
+        const std::map<int, chilitags::QuadDetection> &tags)
 {
     for(const auto& tag : tags){
 
-        const cv::Mat_<cv::Point2f> corners(tag.second);
+        const cv::Mat_<cv::Point2f> corners(tag.second.corners);
 
         for(size_t i = 0; i < 4; ++i){
             const int SHIFT = 16;

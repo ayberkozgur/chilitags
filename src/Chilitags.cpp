@@ -34,9 +34,9 @@ namespace {
         if (factor == 1.0f) return tags;
         for(auto &tag: tags) {
             //Maybe this translation should be moved to Refine ?
-            cv::add(tag.second, cv::Scalar::all(-0.5f), tag.second);
-            tag.second = factor*tag.second;
-            cv::add(tag.second, cv::Scalar::all(0.5f), tag.second);
+            cv::add(tag.second.corners, cv::Scalar::all(-0.5f), tag.second.corners);
+            tag.second.corners = factor*tag.second.corners;
+            cv::add(tag.second.corners, cv::Scalar::all(0.5f), tag.second.corners);
         }
         return tags;
     }

@@ -66,16 +66,16 @@ TagCornerMap Track::operator()(cv::Mat const& grayscaleInputImage)
         Quad result;
 
         static const float GROWTH_RATIO = 20.0f/10.0f;
-        cv::Rect roi = growRoi(grayscaleInputImage, cv::Mat_<cv::Point2f>(tag.second), GROWTH_RATIO);
+        cv::Rect roi = growRoi(grayscaleInputImage, cv::Mat_<cv::Point2f>(tag.second.corners), GROWTH_RATIO);
         cv::Point2f roiOffset = roi.tl();
         for (int i : {0,1,2,3}) {
-            tag.second(i,0) -= roiOffset.x;
-            tag.second(i,1) -= roiOffset.y;
+            tag.second.corners(i,0) -= roiOffset.x;
+            tag.second.corners(i,1) -= roiOffset.y;
         }
 
         cv::calcOpticalFlowPyrLK(
             mPrevFrame(roi), grayscaleInputImage(roi),
-            tag.second, result,
+            tag.second.corners, result,
             status, errors,
             //TODO play with parameters (with tests)
             cv::Size(21,21), 3,
@@ -89,8 +89,11 @@ TagCornerMap Track::operator()(cv::Mat const& grayscaleInputImage)
 
         if (cv::sum(cv::Mat(status))[0] == status.size()) {
             quad = mRefine(grayscaleInputImage, result, 0.5f/10.0f);
-            if(!mScreenOut(quad))
-                trackedTags[tag.first] = quad;
+            if(!mScreenOut(quad)){
+                QuadDetection& quadAndConfidence = trackedTags[tag.first];
+                quadAndConfidence.corners = quad;
+                quadAndConfidence.confidence = 0.9f*tag.second.confidence; //TODO: THIS NUMBER IS TO BE TUNED OR EXPOSED VIA AN API
+            }
         }
     }
 

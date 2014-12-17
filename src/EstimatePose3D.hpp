@@ -131,11 +131,13 @@ public:
      * @param objectPoints Reference points on the object
      * @param imagePoints Where reference points are found in the image
      * @param objects Map to update in which ID maps to the transform
+     * @param confidence Confidence of the detection/tracking between 0 (exclusive) and 1
      */
     void operator()(std::string const& name,
             std::vector<cv::Point3_<RealT>> const& objectPoints,
             cv::Mat_<cv::Point2f> const& imagePoints,
-            typename Chilitags3D_<RealT>::TagPoseMap& objects);
+            typename Chilitags3D_<RealT>::TagPoseMap& objects,
+            RealT confidence);
 
 protected:
 
